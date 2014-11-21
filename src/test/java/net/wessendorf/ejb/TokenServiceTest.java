@@ -46,7 +46,15 @@ public class TokenServiceTest {
 
     @Test
     public void testLowNumberOfThreads() throws Exception {
-        final int threads = 16;
+        final int threads = 64;
+        final int startItems = service.findAll().size();
+        addConcurrentTokens(threads);
+        assertEquals(threads + startItems, service.findAll().size());
+    }
+
+    @Test
+    public void testMediumNumberOfThreads() throws Exception {
+        final int threads = 512;
         final int startItems = service.findAll().size();
         addConcurrentTokens(threads);
         assertEquals(threads + startItems, service.findAll().size());
@@ -54,14 +62,11 @@ public class TokenServiceTest {
 
     @Test
     public void testHeighNumberOfThreads() throws Exception {
-        final int threads = 64;
+        final int threads = 1000;
         final int startItems = service.findAll().size();
         addConcurrentTokens(threads);
         assertEquals(threads + startItems, service.findAll().size());
     }
-
-
-
 
     // =======================================================
     //                  Helper methods...
