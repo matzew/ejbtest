@@ -17,14 +17,17 @@ package net.wessendorf.ejb.dao;
 
 import net.wessendorf.ejb.entity.Token;
 
+import javax.ejb.Stateless;
 import javax.inject.Inject;
 import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
 import java.util.List;
 
+@Stateless
 public class TokenDao {
 
-    @Inject
-    protected EntityManager entityManager;
+    @PersistenceContext(unitName = "TestPU")
+    private EntityManager entityManager;
 
     public void create(Token token) {
         entityManager.persist(token);

@@ -15,13 +15,42 @@
  */
 package net.wessendorf.ejb.service;
 
+import net.wessendorf.ejb.dao.TokenDao;
 import net.wessendorf.ejb.entity.Token;
 
+import javax.ejb.AsyncResult;
+import javax.ejb.Asynchronous;
+import javax.ejb.Stateless;
+import javax.inject.Inject;
 import java.util.List;
+import java.util.concurrent.Future;
+import java.util.logging.Logger;
 
-public interface TokenService {
+@Stateless
+public class TokenService
+{
 
-    void addToken(Token token);
+    private static Logger logger = Logger.getLogger(TokenService.class.getSimpleName());
 
-    List<Token> findAll();
+    @Inject
+    private TokenDao dao;
+
+    @Asynchronous
+    public Future<Boolean> addToken(Token token) {
+
+        logger.info("Thread ==> " + Thread.currentThread().getName());
+
+        try  {
+            dao.create(token);
+        }
+        catch (final Exception e) {
+            e.printStackTrace();
+            return new AsyncResult<Boolean>(Boolean.FALSE);
+        }
+        return new AsyncResult<Boolean>(Boolean.TRUE);
+    }
+
+    public List<Token> findAll() {
+        return dao.findAll();
+    }
 }
