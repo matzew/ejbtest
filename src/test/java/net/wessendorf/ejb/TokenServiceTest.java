@@ -15,107 +15,52 @@
  */
 package net.wessendorf.ejb;
 
-import net.wessendorf.ejb.dao.TokenDao;
 import net.wessendorf.ejb.entity.Token;
 import net.wessendorf.ejb.service.TokenService;
-import net.wessendorf.ejb.service.TokenServiceImpl;
-import org.apache.openejb.jee.Beans;
-import org.apache.openejb.junit.ApplicationComposer;
-import org.apache.openejb.testing.Module;
+import org.apache.deltaspike.testcontrol.api.junit.CdiTestRunner;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import javax.annotation.PreDestroy;
-import javax.ejb.Stateful;
-import javax.enterprise.context.RequestScoped;
-import javax.enterprise.inject.Produces;
 import javax.inject.Inject;
-import javax.persistence.EntityManager;
-import javax.persistence.EntityManagerFactory;
-import javax.persistence.Persistence;
-import java.io.Serializable;
+
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.assertEquals;
 
-@RunWith(ApplicationComposer.class)
+@RunWith(CdiTestRunner.class)
 public class TokenServiceTest {
 
     @Inject
     private TokenService service;
 
     @Test
-    public void addToken() {
-        service.addToken(new Token());
+    public void addToken() throws Exception {
+        Assert.assertTrue(service.addToken(new Token()).get());
     }
 
     @Test
-    public void testLowNumberOfThreads() throws InterruptedException {
+    public void testLowNumberOfThreads() throws Exception {
         final int threads = 16;
+        final int startItems = service.findAll().size();
         addConcurrentTokens(threads);
-        assertEquals(threads, service.findAll().size());
+        assertEquals(threads + startItems, service.findAll().size());
     }
 
     @Test
-    public void testHeighNumberOfThreads() throws InterruptedException {
+    public void testHeighNumberOfThreads() throws Exception {
         final int threads = 64;
+        final int startItems = service.findAll().size();
         addConcurrentTokens(threads);
-        assertEquals(threads, service.findAll().size());
+        assertEquals(threads + startItems, service.findAll().size());
     }
 
-    // =======================================================
-    //                  OpenEJB bootstrap code
-    // =======================================================
 
-    @Module
-    public Beans getBeans() {
-        final Beans beans = new Beans();
-        beans.addManagedClass(TokenDao.class);
-        beans.addManagedClass(TokenServiceImpl.class);
-
-        return beans;
-    }
-
-    @Module
-    public Class<?>[] produceTestEntityManager() throws Exception {
-        return new Class<?>[] { EntityManagerProducer.class};
-    }
-
-    /**
-     * Static class to have OpenEJB produce/lookup a test EntityManager.
-     */
-    @RequestScoped
-    @Stateful
-    public static class EntityManagerProducer implements Serializable {
-
-        {
-            EntityManagerFactory emf = Persistence.createEntityManagerFactory("TestPU");
-            entityManager = emf.createEntityManager();
-        }
-
-        private static EntityManager entityManager;
-
-        @Produces
-        public EntityManager produceEm() {
-
-            if (! entityManager.getTransaction().isActive()) {
-                entityManager.getTransaction().begin();
-            }
-
-            return entityManager;
-        }
-
-        @PreDestroy
-        public void closeEntityManager() {
-            if (entityManager.isOpen()) {
-                entityManager.getTransaction().commit();
-                entityManager.close();
-            }
-        }
-    }
 
 
     // =======================================================
@@ -123,45 +68,22 @@ public class TokenServiceTest {
     // =======================================================
 
 
-    private void addConcurrentTokens(final int threads) throws InterruptedException {
+    private void addConcurrentTokens(final int threads) throws InterruptedException, ExecutionException {
 
         final AtomicBoolean outcome = new AtomicBoolean(true);
-        final CountDownLatch startLatch = new CountDownLatch(1);
-        final CountDownLatch endLatch = new CountDownLatch(threads);
+        List<Future<Boolean>> results = new ArrayList<Future<Boolean>>(threads);
 
         for (int i = 0; i < threads; i++) {
+            final Token token = new Token();
+            token.setValue(generateToken());
 
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        startLatch.await();
-
-                        try {
-
-                            final Token token = new Token();
-                            token.setValue(generateToken());
-
-                            service.addToken(token);
-
-                        } catch (final Exception e) {
-                            e.printStackTrace();
-                            outcome.compareAndSet(true, false);
-                        } finally {
-                            endLatch.countDown();
-                        }
-                    } catch (InterruptedException e) {
-                        //e.printStackTrace();
-                    }
-
-
-                }
-            }).start();
+            results.add(service.addToken(token));
         }
-        startLatch.countDown();
-        endLatch.await();
-        if (!outcome.get()) {
-            Assert.fail("test failed. Please check stacktrace(s)");
+
+        for (Future<Boolean> result : results) {
+            if (!result.get()) {
+                Assert.fail("test failed. Please check stacktrace(s)");
+            }
         }
     }
 
