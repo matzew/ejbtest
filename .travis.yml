@@ -6,4 +6,4 @@ jdk:
 
 branches:
   only:
-    - master  
+    - cdictrl  
