@@ -27,6 +27,21 @@
         <deltaspike.version>1.1.1-SNAPSHOT</deltaspike.version>
     </properties>
 
+     <repositories>
+         <!-- Apache snapshots -->
+         <repository>
+             <id>apache-snapshots</id>
+             <name>Apache Snapshot repository</name>
+             <url>http://repository.apache.org/content/groups/snapshots-group</url>
+             <releases>
+                 <enabled>false</enabled>
+             </releases>
+             <snapshots>
+                 <enabled>true</enabled>
+             </snapshots>
+         </repository>
+    </repositories>
+
     <dependencies>
 
         <dependency>
